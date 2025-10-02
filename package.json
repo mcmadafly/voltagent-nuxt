@@ -10,8 +10,11 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.42",
     "@nuxt/eslint": "^1.9.0",
     "@nuxt/ui": "^4.0.0",
+    "@voltagent/core": "^1.1.24",
+    "@voltagent/libsql": "^1.0.7",
     "nuxt": "^4.1.2",
     "vue": "^3.5.22",
     "vue-router": "^4.5.1"
