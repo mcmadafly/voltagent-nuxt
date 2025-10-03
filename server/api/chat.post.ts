@@ -1,18 +1,4 @@
-import { Agent } from "@voltagent/core";
-import { openai } from "@ai-sdk/openai";
-import { Memory, InMemoryStorageAdapter } from "@voltagent/core";
-
-// Create agent on server side where Node.js APIs are available
-const voltagentAgent = new Agent({
-    name: "My Assistant",
-    instructions: "A helpful and friendly assistant that can answer questions clearly and concisely.",
-    model: openai("gpt-4o"),
-    memory: new Memory({
-        storage: new InMemoryStorageAdapter({
-            storageLimit: 100,
-        }),
-    }),
-});
+import { supervisorAgent } from "../../voltagent";
 
 export default defineEventHandler(async (event) => {
     try {
@@ -25,8 +11,19 @@ export default defineEventHandler(async (event) => {
             });
         }
 
-        // Use streamText for streaming responses
-        const result = await voltagentAgent.streamText(message);
+        // Convert message to UIMessage format
+        const messages = [{
+            role: 'user' as const,
+            content: message,
+            id: Date.now().toString(),
+            parts: [{ type: 'text' as const, text: message }]
+        }];
+
+        // Use streamText for streaming responses from the supervisor agent
+        const result = await supervisorAgent.streamText(messages, {
+            userId: '1',
+            conversationId: '1'
+        });
 
         // Return the streaming response
         return result.toUIMessageStreamResponse();

@@ -123,7 +123,7 @@ const onSubmit = async () => {
 
     // Scroll to bottom when user message is added
     nextTick(() => {
-        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+        const chatContainer = document.querySelector('.overflow-y-auto');
         if (chatContainer) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -148,7 +148,7 @@ const onSubmit = async () => {
 
     // Scroll to bottom when new message is added
     nextTick(() => {
-        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+        const chatContainer = document.querySelector('.overflow-y-auto');
         if (chatContainer) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -198,12 +198,15 @@ const onSubmit = async () => {
                                     messages.value[messageIndex].parts[0].text += chunk.delta;
                                     // Force scroll to bottom after DOM update
                                     nextTick(() => {
-                                        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+                                        const chatContainer = document.querySelector('.overflow-y-auto');
                                         if (chatContainer) {
                                             chatContainer.scrollTop = chatContainer.scrollHeight;
                                         }
                                     });
                                 }
+                            } else if (chunk.type === 'tool-input-start' || chunk.type === 'tool-input-delta' || chunk.type === 'tool-input-end') {
+                                // Handle tool execution - you can add tool execution display here if needed
+                                console.log('Tool execution:', chunk);
                             }
                         } catch (e) {
                             // Ignore parsing errors for malformed chunks
