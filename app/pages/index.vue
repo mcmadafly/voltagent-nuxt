@@ -121,44 +121,104 @@ const onSubmit = async () => {
     };
     messages.value.push(userMessage);
 
+    // Scroll to bottom when user message is added
+    nextTick(() => {
+        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+
     const currentInput = input.value;
     input.value = ''; // Clear input after adding message
 
+    // Create assistant message placeholder for streaming
+    const assistantMessageId = crypto.randomUUID();
+    const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: 'assistant',
+        parts: [
+            {
+                type: 'text',
+                text: '',
+            },
+        ],
+    };
+    messages.value.push(assistantMessage);
+
+    // Scroll to bottom when new message is added
+    nextTick(() => {
+        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+
     loading.value = true;
     try {
-        const data = await $fetch('/api/chat', {
+        // Use fetch directly for streaming
+        const response = await fetch('/api/chat', {
             method: 'POST',
-            body: {
-                message: currentInput,
+            headers: {
+                'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+                message: currentInput,
+            }),
         });
 
-        // Add assistant response
-        const assistantMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            parts: [
-                {
-                    type: 'text',
-                    text: data.response,
-                },
-            ],
-        };
-        messages.value.push(assistantMessage);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (reader) {
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Parse SSE format chunks
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const chunk = JSON.parse(line.slice(6));
+                            if (chunk.type === 'text-delta' && chunk.delta) {
+                                // Update the assistant message with new text
+                                const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
+                                if (messageIndex !== -1 && messages.value[messageIndex]?.parts?.[0]) {
+                                    messages.value[messageIndex].parts[0].text += chunk.delta;
+                                    // Force scroll to bottom after DOM update
+                                    nextTick(() => {
+                                        const chatContainer = document.querySelector('.max-h-\\[500px\\]');
+                                        if (chatContainer) {
+                                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore parsing errors for malformed chunks
+                        }
+                    }
+                }
+            }
+        }
     } catch (error) {
         console.error('Error generating response:', error);
-        // Add error message
-        const errorMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            parts: [
-                {
-                    type: 'text',
-                    text: 'Sorry, there was an error processing your request.',
-                },
-            ],
-        };
-        messages.value.push(errorMessage);
+        // Update the assistant message with error
+        const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
+        if (messageIndex !== -1 && messages.value[messageIndex]?.parts?.[0]) {
+            messages.value[messageIndex].parts[0].text = 'Sorry, there was an error processing your request.';
+        }
     } finally {
         loading.value = false;
     }
@@ -175,13 +235,13 @@ const onSubmit = async () => {
         <div class="max-w-screen-md mx-auto border border-gray-800 rounded-lg">
             <UChatPalette class="p-0" :ui="{ content: 'overflow-y-auto flex-1 flex flex-col py-0' }">
                 <div class="py-2">
-                    <UChatMessages auto-scroll-icon="i-lucide-chevron-down" :should-scroll-to-bottom="false"
+                    <UChatMessages auto-scroll-icon="i-lucide-chevron-down" :should-scroll-to-bottom="true"
                         :messages="messages" class="sm:py-0 px-10 max-h-[500px] overflow-y-auto" />
                 </div>
-                <UCard variant="subtle" class="flex-1 flex items-center justify-center py-8 mx-8">
+
+                <!-- <UCard variant="subtle" class="flex-1 flex items-center justify-center py-8 mx-8">
                     <div class="w-full space-y-6">
 
-                        <!-- Example 1: Word Count Tool -->
                         <ToolExecution tool-name="countWords" status="completed"
                             :input="{ text: 'Count the words in the text.' }" :output="{
                                 type: 'json',
@@ -192,7 +252,6 @@ const onSubmit = async () => {
                             }"
                             summary="The text &quot;Count the words in the text.&quot; contains <strong>6 words</strong>" />
 
-                        <!-- Example 2: Weather Tool -->
                         <ToolExecution tool-name="getWeather" status="completed"
                             :input="{ location: 'Tokyo', units: 'metric' }" :output="{
                                 type: 'json',
@@ -205,11 +264,10 @@ const onSubmit = async () => {
                                 }
                             }" summary="Current weather in Tokyo: <strong>24°C</strong> and sunny" />
 
-                        <!-- Example 3: Running Tool -->
                         <ToolExecution tool-name="analyzeData" status="running"
                             :input="{ dataset: 'sales_data.csv', analysis: 'trend' }" />
                     </div>
-                </UCard>
+                </UCard> -->
                 <!-- Placeholder when no messages -->
                 <div v-if="messages.length === 0" class="flex-1 flex items-center justify-center py-8">
                     <div class="text-center text-gray-500">

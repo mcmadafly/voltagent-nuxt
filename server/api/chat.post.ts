@@ -17,7 +17,7 @@ const voltagentAgent = new Agent({
 export default defineEventHandler(async (event) => {
     try {
         const { message } = await readBody(event);
-        
+
         if (!message || typeof message !== 'string') {
             throw createError({
                 statusCode: 400,
@@ -25,12 +25,11 @@ export default defineEventHandler(async (event) => {
             });
         }
 
-        const result = await voltagentAgent.generateText(message);
-        
-        return {
-            success: true,
-            response: result.text
-        };
+        // Use streamText for streaming responses
+        const result = await voltagentAgent.streamText(message);
+
+        // Return the streaming response
+        return result.toUIMessageStreamResponse();
     } catch (error) {
         console.error('Error generating response:', error);
         throw createError({
