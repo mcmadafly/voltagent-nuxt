@@ -1,0 +1,66 @@
+{
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": false,
+    "editor.wordWrap": "on",
+    "editor.wordWrapColumn": 80,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.rulers": [80],
+    "editor.defaultFormatter": null,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    "typescript.preferences.indentSize": 4,
+    "javascript.preferences.indentSize": 4,
+    "vue.codeActions.enabled": true,
+    "vue.complete.casing.tags": "kebab",
+    "vue.complete.casing.props": "camel",
+    "[vue]": {
+        "editor.defaultFormatter": null,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 80,
+        "editor.insertSpaces": true,
+        "editor.rulers": [80]
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": null,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 80,
+        "editor.insertSpaces": true,
+        "editor.rulers": [80]
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": null,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 80,
+        "editor.insertSpaces": true,
+        "editor.rulers": [80]
+    },
+    "[tsx]": {
+        "editor.defaultFormatter": null,
+        "editor.formatOnSave": false,
+        "editor.tabSize": 4,
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 80,
+        "editor.insertSpaces": true,
+        "editor.rulers": [80]
+    },
+    "prettier.tabWidth": 4,
+    "prettier.useTabs": false,
+    "prettier.semi": true,
+    "prettier.singleQuote": true,
+    "prettier.trailingComma": "es5",
+    "prettier.printWidth": 80,
+    "prettier.endOfLine": "lf",
+    "prettier.requireConfig": true,
+    "prettier.configPath": ".prettierrc"
+}
