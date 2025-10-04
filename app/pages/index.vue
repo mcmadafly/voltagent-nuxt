@@ -28,17 +28,25 @@ const messages = ref<Message[]>([])
 const CHAT_HISTORY_KEY = 'voltagent-chat-history';
 const CONVERSATION_ID_KEY = 'voltagent-conversation-id';
 
+// Helper function to safely access localStorage
+const isClient = process.client;
+const safeLocalStorage = {
+    getItem: (key: string) => isClient ? localStorage.getItem(key) : null,
+    setItem: (key: string, value: string) => isClient && localStorage.setItem(key, value),
+    removeItem: (key: string) => isClient && localStorage.removeItem(key)
+};
+
 // Load or generate conversation ID
-const conversationId = ref(localStorage.getItem(CONVERSATION_ID_KEY) || crypto.randomUUID());
+const conversationId = ref(safeLocalStorage.getItem(CONVERSATION_ID_KEY) || crypto.randomUUID());
 
 // Save conversation ID to localStorage when it changes
 watch(conversationId, (newId) => {
-    localStorage.setItem(CONVERSATION_ID_KEY, newId);
+    safeLocalStorage.setItem(CONVERSATION_ID_KEY, newId);
 }, { immediate: true });
 
 // Load chat history from localStorage on mount
 onMounted(() => {
-    const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+    const savedHistory = safeLocalStorage.getItem(CHAT_HISTORY_KEY);
     if (savedHistory) {
         try {
             messages.value = JSON.parse(savedHistory);
@@ -51,7 +59,7 @@ onMounted(() => {
 // Save chat history to localStorage
 const saveChatHistory = () => {
     try {
-        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.value));
+        safeLocalStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.value));
     } catch (error) {
         console.warn('Failed to save chat history:', error);
     }
@@ -110,7 +118,7 @@ const handleToolExecution = (chunk: any, message: Message) => {
 const clearChatHistory = () => {
     messages.value = [];
     conversationId.value = crypto.randomUUID(); // Generate new conversation ID
-    localStorage.removeItem(CHAT_HISTORY_KEY); // Clear saved chat history
+    safeLocalStorage.removeItem(CHAT_HISTORY_KEY); // Clear saved chat history
 };
 
 // Map tool names to agent names
@@ -148,7 +156,9 @@ const parseAndCreateToolOutputs = (text: string, message: Message) => {
     }
 
     // Clear existing outputs to avoid duplicates
-    message.agentOutputs.length = 0;
+    if (message.agentOutputs) {
+        message.agentOutputs.length = 0;
+    }
 
     // Extract the original input from the first user message
     const userMessage = messages.value.find(m => m.role === 'user');
@@ -209,7 +219,10 @@ const parseAndCreateToolOutputs = (text: string, message: Message) => {
 
         if (match) {
             const output = parser.createOutput(match);
-            message.agentOutputs?.push({
+            if (!message.agentOutputs) {
+                message.agentOutputs = [];
+            }
+            message.agentOutputs.push({
                 agentName: parser.name,
                 toolName: parser.toolName,
                 status: 'completed',
@@ -392,14 +405,14 @@ const onSubmit = async () => {
                         <!-- Custom content slot to add tool outputs after assistant messages -->
                         <template #content="{ message }">
                             <!-- Display the message text -->
-                            <div v-for="part in message.parts" :key="part.id" class="text-sm whitespace-pre-wrap">
-                                {{ part.text }}
+                            <div v-for="(part, index) in message.parts" :key="`part-${index}`" class="text-sm whitespace-pre-wrap">
+                                {{ (part as any).text || '' }}
                             </div>
 
                             <!-- Tool Outputs immediately after assistant message -->
-                            <div v-if="message.role === 'assistant' && message.agentOutputs && message.agentOutputs.length > 0"
+                            <div v-if="message.role === 'assistant' && (message as any).agentOutputs && (message as any).agentOutputs.length > 0"
                                 class="mt-4 space-y-3">
-                                <div v-for="agentOutput in message.agentOutputs"
+                                <div v-for="agentOutput in (message as any).agentOutputs"
                                     :key="`${message.id}-${agentOutput.agentName}`">
                                     <ToolExecution :tool-name="agentOutput.toolName || agentOutput.agentName"
                                         :status="agentOutput.status" :input="agentOutput.input || {}"
