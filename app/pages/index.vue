@@ -254,7 +254,7 @@ const onSubmit = async () => {
 
     // Scroll to bottom when user message is added
     nextTick(() => {
-        const chatContainer = document.querySelector('.overflow-y-auto');
+        const chatContainer = document.querySelector('.overflow-y-auto') || document.querySelector('[class*="overflow-y"]');
         if (chatContainer) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -281,7 +281,7 @@ const onSubmit = async () => {
 
     // Scroll to bottom when new message is added
     nextTick(() => {
-        const chatContainer = document.querySelector('.overflow-y-auto');
+        const chatContainer = document.querySelector('.overflow-y-auto') || document.querySelector('[class*="overflow-y"]');
         if (chatContainer) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -340,16 +340,21 @@ const onSubmit = async () => {
                                 if (messageIndex !== -1 && messages.value[messageIndex]?.parts?.[0]) {
                                     messages.value[messageIndex].parts[0].text += chunk.delta;
 
+                                    // Save progress to localStorage during streaming
+                                    saveChatHistory();
+
                                     // Check if the response is complete and parse for tool results
                                     const currentText = messages.value[messageIndex].parts[0].text;
                                     if ((currentText.includes('**Uppercase Version:**') && currentText.includes('**Word Count:**') && currentText.includes('**50-Word Story:**')) ||
                                         (currentText.includes('**🔤 Uppercase Version:**') && currentText.includes('**📊 Word Analysis:**') && currentText.includes('**📖 Creative Story:**'))) {
                                         parseAndCreateToolOutputs(currentText, messages.value[messageIndex]);
+                                        // Save final results after parsing tool outputs
+                                        saveChatHistory();
                                     }
 
                                     // Force scroll to bottom after DOM update
                                     nextTick(() => {
-                                        const chatContainer = document.querySelector('.overflow-y-auto');
+                                        const chatContainer = document.querySelector('.overflow-y-auto') || document.querySelector('[class*="overflow-y"]');
                                         if (chatContainer) {
                                             chatContainer.scrollTop = chatContainer.scrollHeight;
                                         }
@@ -363,6 +368,8 @@ const onSubmit = async () => {
                                 const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
                                 if (messageIndex !== -1 && messages.value[messageIndex]) {
                                     handleToolExecution(chunk, messages.value[messageIndex]);
+                                    // Save progress after tool execution updates
+                                    saveChatHistory();
                                 }
                             }
                         } catch (e) {
@@ -378,10 +385,14 @@ const onSubmit = async () => {
         const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
         if (messageIndex !== -1 && messages.value[messageIndex]?.parts?.[0]) {
             messages.value[messageIndex].parts[0].text = 'Sorry, there was an error processing your request.';
+            // Save error state to localStorage
+            saveChatHistory();
         }
     } finally {
         loading.value = false;
         submitted.value = false;
+        // Final save to ensure all state is persisted
+        saveChatHistory();
     }
 };
 </script>

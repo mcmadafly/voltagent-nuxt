@@ -11,8 +11,8 @@ useHead({
     }
 })
 
-const title = 'Nuxt Starter Template'
-const description = 'A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours.'
+const title = 'Nuxt VoltAgent Demo'
+const description = 'A demo of the VoltAgent framework powered by Nuxt, Nuxt UI, and OpenAI.'
 
 useSeoMeta({
     title,
