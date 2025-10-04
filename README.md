@@ -2,6 +2,8 @@
 
 A demonstration project showcasing the integration of **VoltAgent** (AI agent framework) with **Nuxt UI** to create an intelligent chat interface with tool execution capabilities.
 
+<img src="./preview.png">
+
 ## 🚀 What This Project Does
 
 This project demonstrates a **Supervisor Agent** that delegates tasks to specialized sub-agents:
