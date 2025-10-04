@@ -70,13 +70,26 @@ const storyWriterAgent = new Agent({
     memory: sharedMemory,
 });
 
-// Supervisor agent that delegates to sub-agents
+// Supervisor agent that uses all tools directly
 export const supervisorAgent = new Agent({
     name: "Supervisor",
     instructions:
-        "You are a text processing supervisor. When given any text input, you MUST delegate to ALL THREE agents: UppercaseAgent, WordCountAgent, AND StoryWriterAgent. Delegate to all of them to process the text in parallel. Then combine and present all three results to the user: the uppercase version, the word count, and the 50-word story.",
+        `You are a text processing supervisor. When given any text input, you MUST use ALL THREE tools: uppercase, countWords, and writeStory. Use all of them to process the text. 
+
+Present the results in this exact format:
+
+**🔤 Uppercase Version:**
+[Uppercase result here]
+
+**📊 Word Analysis:**  
+[Word count and analysis here]
+
+**📖 Creative Story:**
+[50-word story here]
+
+Make sure to format each section clearly with bold headers and proper spacing.`,
     model: openai("gpt-4o-mini"),
-    subAgents: [uppercaseAgent, wordCountAgent, storyWriterAgent],
+    tools: [uppercaseTool, wordCountTool, storyWriterTool],
     memory: sharedMemory,
 });
 

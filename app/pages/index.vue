@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import ToolExecution from '~/components/ToolExecution.vue';
+
+interface AgentOutput {
+    agentName: string;
+    toolName?: string;
+    input?: Record<string, any>;
+    output?: Record<string, any>;
+    status: 'running' | 'completed' | 'error';
+    summary?: string;
+}
+
 interface Message {
     id: string;
     role: 'user' | 'assistant';
@@ -6,104 +17,169 @@ interface Message {
         type: 'text';
         text: string;
     }>;
+    agentOutputs?: AgentOutput[];
 }
 
 const loading = ref(false);
 const input = ref('');
 const messages = ref<Message[]>([])
-// test message display
-// const messages = ref([
-//     {
-//         id: '6045235a-a435-46b8-989d-2df38ca2eb47',
-//         role: 'user',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Hello, how are you?',
-//             },
-//         ],
-//     },
-//     {
-//         id: '7a92b3c1-d5f8-4e76-b8a9-3c1e5fb2e0d8',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'I am doing well, thank you for asking! How can I assist you today?',
-//             },
-//         ],
-//     },
-//     {
-//         id: '9c84d6a7-8b23-4f12-a1d5-e7f3b9c05e2a',
-//         role: 'user',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'What is the current weather in Tokyo?',
-//             },
-//         ],
-//     },
-//     {
-//         id: 'b2e5f8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: "Based on the latest data, Tokyo is currently experiencing sunny weather with temperatures around 24°C (75°F). It's a beautiful day with clear skies. The forecast for the rest of the week shows a slight chance of rain on Thursday, with temperatures gradually rising to 28°C by the weekend. Humidity levels are moderate at around 65%, and wind speeds are light at 8 km/h from the southeast. Air quality is good with an index of 42. The UV index is high at 7, so it's recommended to wear sunscreen if you're planning to spend time outdoors. Sunrise was at 5:24 AM and sunset will be at 6:48 PM, giving Tokyo approximately 13 hours and 24 minutes of daylight today. The moon is currently in its waxing gibbous phase.",
-//             },
-//         ],
-//     },
-//     {
-//         id: 'c3e5f8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'user',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Can you recommend some popular tourist attractions in Kyoto?',
-//             },
-//         ],
-//     },
-//     {
-//         id: 'd4f5g8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Kyoto is known for its beautiful temples, traditional tea houses, and gardens. Some popular attractions include Kinkaku-ji (Golden Pavilion) with its stunning gold leaf exterior reflecting in the mirror pond, Fushimi Inari Shrine with its thousands of vermilion torii gates winding up the mountainside, Arashiyama Bamboo Grove where towering stalks create an otherworldly atmosphere, Kiyomizu-dera Temple perched on a hillside offering panoramic views of the city, and the historic Gion district where you might spot geisha hurrying to evening appointments through narrow stone-paved streets lined with traditional wooden machiya houses.',
-//             },
-//         ],
-//     },
-//     {
-//         id: 'd4f5g8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Kyoto is known for its beautiful temples, traditional tea houses, and gardens. Some popular attractions include Kinkaku-ji (Golden Pavilion) with its stunning gold leaf exterior reflecting in the mirror pond, Fushimi Inari Shrine with its thousands of vermilion torii gates winding up the mountainside, Arashiyama Bamboo Grove where towering stalks create an otherworldly atmosphere, Kiyomizu-dera Temple perched on a hillside offering panoramic views of the city, and the historic Gion district where you might spot geisha hurrying to evening appointments through narrow stone-paved streets lined with traditional wooden machiya houses.',
-//             },
-//         ],
-//     }, {
-//         id: 'd4f5g8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Kyoto is known for its beautiful temples, traditional tea houses, and gardens. Some popular attractions include Kinkaku-ji (Golden Pavilion) with its stunning gold leaf exterior reflecting in the mirror pond, Fushimi Inari Shrine with its thousands of vermilion torii gates winding up the mountainside, Arashiyama Bamboo Grove where towering stalks create an otherworldly atmosphere, Kiyomizu-dera Temple perched on a hillside offering panoramic views of the city, and the historic Gion district where you might spot geisha hurrying to evening appointments through narrow stone-paved streets lined with traditional wooden machiya houses.',
-//             },
-//         ],
-//     }, {
-//         id: 'd4f5g8c3-a1d9-4e67-b3f2-c9d8e7a6b5f4',
-//         role: 'assistant',
-//         parts: [
-//             {
-//                 type: 'text',
-//                 text: 'Kyoto is known for its beautiful temples, traditional tea houses, and gardens. Some popular attractions include Kinkaku-ji (Golden Pavilion) with its stunning gold leaf exterior reflecting in the mirror pond, Fushimi Inari Shrine with its thousands of vermilion torii gates winding up the mountainside, Arashiyama Bamboo Grove where towering stalks create an otherworldly atmosphere, Kiyomizu-dera Temple perched on a hillside offering panoramic views of the city, and the historic Gion district where you might spot geisha hurrying to evening appointments through narrow stone-paved streets lined with traditional wooden machiya houses.',
-//             },
-//         ],
-//     },
-// ]);
 
-const model = ref('gpt-4o');
+// Handle tool execution data from streaming response
+const handleToolExecution = (chunk: any, message: Message) => {
+    if (!message) return;
+
+    if (!message.agentOutputs) {
+        message.agentOutputs = [];
+    }
+
+    const toolName = chunk.toolName || chunk.tool || chunk.toolName;
+    const agentName = getAgentNameFromTool(toolName);
+
+    // Find existing agent output or create new one
+    let agentOutput = message.agentOutputs.find(output => output.toolName === toolName || output.agentName === agentName);
+    if (!agentOutput) {
+        agentOutput = {
+            agentName,
+            toolName,
+            status: 'running',
+            input: {},
+            output: {}
+        };
+        message.agentOutputs.push(agentOutput);
+    }
+
+    // Update based on chunk type
+    switch (chunk.type) {
+        case 'tool-call-start':
+        case 'tool-input-start':
+            agentOutput.status = 'running';
+            if (chunk.args) {
+                agentOutput.input = chunk.args;
+            }
+            break;
+        case 'tool-call-end':
+        case 'tool-input-end':
+        case 'tool-result':
+            agentOutput.status = 'completed';
+            if (chunk.result) {
+                agentOutput.output = chunk.result;
+                agentOutput.summary = generateSummary(agentName, agentOutput.input, agentOutput.output);
+            }
+            break;
+        case 'tool-call-delta':
+        case 'tool-input-delta':
+            // Handle partial results if needed
+            break;
+    }
+};
+
+// Map tool names to agent names
+const getAgentNameFromTool = (toolName: string): string => {
+    switch (toolName) {
+        case 'uppercase':
+            return 'UppercaseAgent';
+        case 'countWords':
+            return 'WordCountAgent';
+        case 'writeStory':
+            return 'StoryWriterAgent';
+        default:
+            return toolName || 'UnknownAgent';
+    }
+};
+
+// Generate summary for agent output
+const generateSummary = (agentName: string, input: any, output: any): string => {
+    switch (agentName) {
+        case 'UppercaseAgent':
+            return `🔤 Converted text to uppercase: <strong>${output.result}</strong>`;
+        case 'WordCountAgent':
+            return `📊 Text analysis: <strong>${output.count} words</strong> found - ${output.words.slice(0, 5).join(', ')}${output.words.length > 5 ? '...' : ''}`;
+        case 'StoryWriterAgent':
+            return `📖 Creative story generated about: <strong>${input.text}</strong>`;
+        default:
+            return 'Tool execution completed';
+    }
+};
+
+// Parse supervisor response and create individual tool outputs
+const parseAndCreateToolOutputs = (text: string, message: Message) => {
+    if (!message.agentOutputs) {
+        message.agentOutputs = [];
+    }
+
+    // Clear existing outputs to avoid duplicates
+    message.agentOutputs.length = 0;
+
+    // Extract the original input from the first user message
+    const userMessage = messages.value.find(m => m.role === 'user');
+    const originalInput = userMessage?.parts?.[0]?.text || '';
+
+    // Define parser configurations for each tool
+    const parsers = [
+        {
+            name: 'UppercaseAgent',
+            toolName: 'uppercase',
+            patterns: [
+                /\*\*🔤 Uppercase Version:\*\*\s*\n(.+?)(?=\*\*|$)/s,
+                /\*\*Uppercase Version:\*\*\s*(.+?)(?=\*\*|$)/s
+            ],
+            createOutput: (match: RegExpMatchArray) => ({
+                result: match[1]?.trim() || ''
+            }),
+            createSummary: (output: any) => `🔤 Converted text to uppercase: <strong>${output.result}</strong>`
+        },
+        {
+            name: 'WordCountAgent',
+            toolName: 'countWords',
+            patterns: [
+                /\*\*📊 Word Analysis:\*\*\s*\n(.+?)(?=\*\*|$)/s,
+                /\*\*Word Count:\*\*\s*(.+?)(?=\*\*|$)/s
+            ],
+            createOutput: () => {
+                const words = originalInput.trim().split(/\s+/).filter(word => word.length > 0);
+                return { count: words.length, words };
+            },
+            createSummary: (output: any) =>
+                `📊 Text analysis: <strong>${output.count} words</strong> found - ${output.words.slice(0, 5).join(', ')}${output.words.length > 5 ? '...' : ''}`
+        },
+        {
+            name: 'StoryWriterAgent',
+            toolName: 'writeStory',
+            patterns: [
+                /\*\*📖 Creative Story:\*\*\s*\n(.+?)$/s,
+                /\*\*50-Word Story:\*\*\s*(.+?)$/s
+            ],
+            createOutput: (match: RegExpMatchArray) => ({
+                topic: originalInput,
+                story: match[1]?.trim() || ''
+            }),
+            createSummary: () => `📖 Creative story generated about: <strong>${originalInput}</strong>`
+        }
+    ];
+
+    // Process each parser
+    parsers.forEach(parser => {
+        let match: RegExpMatchArray | null = null;
+
+        // Try each pattern until one matches
+        for (const pattern of parser.patterns) {
+            match = text.match(pattern);
+            if (match) break;
+        }
+
+        if (match) {
+            const output = parser.createOutput(match);
+            message.agentOutputs?.push({
+                agentName: parser.name,
+                toolName: parser.toolName,
+                status: 'completed',
+                input: { text: originalInput },
+                output,
+                summary: parser.createSummary(output)
+            });
+        }
+    });
+};
 
 const onSubmit = async () => {
     if (!input.value.trim()) return;
@@ -118,6 +194,7 @@ const onSubmit = async () => {
                 text: input.value,
             },
         ],
+        agentOutputs: [],
     };
     messages.value.push(userMessage);
 
@@ -143,6 +220,7 @@ const onSubmit = async () => {
                 text: '',
             },
         ],
+        agentOutputs: [],
     };
     messages.value.push(assistantMessage);
 
@@ -196,6 +274,14 @@ const onSubmit = async () => {
                                 const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
                                 if (messageIndex !== -1 && messages.value[messageIndex]?.parts?.[0]) {
                                     messages.value[messageIndex].parts[0].text += chunk.delta;
+
+                                    // Check if the response is complete and parse for tool results
+                                    const currentText = messages.value[messageIndex].parts[0].text;
+                                    if ((currentText.includes('**Uppercase Version:**') && currentText.includes('**Word Count:**') && currentText.includes('**50-Word Story:**')) ||
+                                        (currentText.includes('**🔤 Uppercase Version:**') && currentText.includes('**📊 Word Analysis:**') && currentText.includes('**📖 Creative Story:**'))) {
+                                        parseAndCreateToolOutputs(currentText, messages.value[messageIndex]);
+                                    }
+
                                     // Force scroll to bottom after DOM update
                                     nextTick(() => {
                                         const chatContainer = document.querySelector('.overflow-y-auto');
@@ -204,9 +290,15 @@ const onSubmit = async () => {
                                         }
                                     });
                                 }
-                            } else if (chunk.type === 'tool-input-start' || chunk.type === 'tool-input-delta' || chunk.type === 'tool-input-end') {
-                                // Handle tool execution - you can add tool execution display here if needed
-                                console.log('Tool execution:', chunk);
+                            } else if (chunk.type === 'tool-call-start' || chunk.type === 'tool-call-delta' || chunk.type === 'tool-call-end' ||
+                                chunk.type === 'tool-input-start' || chunk.type === 'tool-input-delta' || chunk.type === 'tool-input-end' ||
+                                chunk.type === 'tool-result') {
+                                // Handle tool execution
+                                console.log('Tool execution chunk:', chunk);
+                                const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
+                                if (messageIndex !== -1 && messages.value[messageIndex]) {
+                                    handleToolExecution(chunk, messages.value[messageIndex]);
+                                }
                             }
                         } catch (e) {
                             // Ignore parsing errors for malformed chunks
@@ -240,6 +332,18 @@ const onSubmit = async () => {
                 <div class="py-2">
                     <UChatMessages auto-scroll-icon="i-lucide-chevron-down" :should-scroll-to-bottom="true"
                         :messages="messages" class="sm:py-0 px-10 max-h-[500px] overflow-y-auto" />
+
+                    <!-- Agent Outputs Display -->
+                    <template v-for="message in messages" :key="`${message.id}-outputs`">
+                        <div v-if="message.agentOutputs && message.agentOutputs.length > 0" class="px-10 pb-4">
+                            <div v-for="agentOutput in message.agentOutputs"
+                                :key="`${message.id}-${agentOutput.agentName}`" class="mt-4">
+                                <ToolExecution :tool-name="agentOutput.toolName || agentOutput.agentName"
+                                    :status="agentOutput.status" :input="agentOutput.input || {}"
+                                    :output="agentOutput.output" :summary="agentOutput.summary" />
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- <UCard variant="subtle" class="flex-1 flex items-center justify-center py-8 mx-8">
