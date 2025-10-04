@@ -327,7 +327,7 @@ const onSubmit = async () => {
             headline="Supervisor Agent with Sub-Agents." :ui="{
                 container: 'lg:py-10', // Adjust height here
             }" />
-        <div class="max-w-screen-md mx-auto border border-gray-800 rounded-lg">
+        <div class="mx-4 md:mx-auto md:max-w-screen-md border border-gray-800 rounded-lg">
             <UChatPalette class="p-0" :ui="{ content: 'overflow-y-auto flex-1 flex flex-col py-0' }">
                 <div class="py-2">
                     <UChatMessages auto-scroll-icon="i-lucide-chevron-down" :should-scroll-to-bottom="true"
@@ -376,7 +376,7 @@ const onSubmit = async () => {
                     </div>
                 </UCard> -->
                 <!-- Placeholder when no messages -->
-                <div v-if="messages.length === 0" class="flex-1 flex items-center justify-center py-8">
+                <div v-if="messages.length === 0" class="flex-1 flex items-center justify-center py-8 ">
                     <div class="text-center text-gray-500">
                         <div class="text-2xl mb-2">💬</div>
                         <p class="text-lg font-medium">Start a conversation</p>
