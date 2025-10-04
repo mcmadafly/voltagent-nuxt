@@ -34,6 +34,8 @@ The UI displays real-time tool execution results with:
 - **Agent Orchestration**: Supervisor agent coordinating multiple sub-agents
 - **Tool Execution**: Real-time tool calling and result display
 - **Streaming Responses**: Live chat interface with streaming AI responses
+- **Persistent Memory**: SQLite-based memory using libsql for conversation history
+- **Chat Persistence**: Conversation history survives page refreshes and server restarts
 - **Modern UI**: Beautiful, responsive interface with dark/light mode
 
 ## 🏃‍♂️ Quick Start
@@ -88,6 +90,8 @@ The UI displays real-time tool execution results with:
    - Count and analyze the words
    - Generate a creative story based on your input
 3. **Explore results**: Expand the tool execution cards to see detailed JSON outputs
+4. **Persistent history**: Your conversations are automatically saved and will persist across page refreshes
+5. **Clear history**: Use the "Clear Chat History" button to start fresh when needed
 
 ## 🏗️ Project Structure
 
@@ -135,6 +139,24 @@ bun run lint
 2. **Create agents** with specific instructions
 3. **Add to supervisor** agent's tool list
 4. **Update UI parsing** in `app/pages/index.vue`
+
+### Memory Configuration
+
+This project uses **libsql** for persistent memory storage:
+
+- **Local SQLite**: Stores conversation history in `memory.db`
+- **Shared Memory**: All agents share the same memory instance
+- **Persistent**: Conversations persist between server restarts
+
+To use **libsql cloud** instead of local SQLite:
+
+1. Set up a libsql database at [libsql.com](https://libsql.com)
+2. Add environment variables to `.env`:
+   ```env
+   LIBSQL_URL=your_libsql_url
+   LIBSQL_AUTH_TOKEN=your_auth_token
+   ```
+3. Update `voltagent/memory.ts` to use cloud configuration
 
 ## 🚀 Deployment
 

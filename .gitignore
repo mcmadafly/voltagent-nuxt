@@ -23,3 +23,7 @@ logs
 .env.*
 !.env.example
 .voltagent/memory.db
+memory.db
+*.db
+memory.db-shm
+memory.db-wal

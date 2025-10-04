@@ -2,7 +2,7 @@ import { supervisorAgent } from "../../voltagent";
 
 export default defineEventHandler(async (event) => {
     try {
-        const { message } = await readBody(event);
+        const { message, conversationId } = await readBody(event);
 
         if (!message || typeof message !== 'string') {
             throw createError({
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
         // Use streamText for streaming responses from the supervisor agent
         const result = await supervisorAgent.streamText(messages, {
             userId: '1',
-            conversationId: '1'
+            conversationId: conversationId || 'default-conversation'
         });
 
         // Return the streaming response

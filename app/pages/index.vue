@@ -21,8 +21,41 @@ interface Message {
 }
 
 const loading = ref(false);
+const submitted = ref(false);
 const input = ref('');
 const messages = ref<Message[]>([])
+// Chat history persistence
+const CHAT_HISTORY_KEY = 'voltagent-chat-history';
+const CONVERSATION_ID_KEY = 'voltagent-conversation-id';
+
+// Load or generate conversation ID
+const conversationId = ref(localStorage.getItem(CONVERSATION_ID_KEY) || crypto.randomUUID());
+
+// Save conversation ID to localStorage when it changes
+watch(conversationId, (newId) => {
+    localStorage.setItem(CONVERSATION_ID_KEY, newId);
+}, { immediate: true });
+
+// Load chat history from localStorage on mount
+onMounted(() => {
+    const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (savedHistory) {
+        try {
+            messages.value = JSON.parse(savedHistory);
+        } catch (error) {
+            console.warn('Failed to load chat history:', error);
+        }
+    }
+});
+
+// Save chat history to localStorage
+const saveChatHistory = () => {
+    try {
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.value));
+    } catch (error) {
+        console.warn('Failed to save chat history:', error);
+    }
+};
 
 // Handle tool execution data from streaming response
 const handleToolExecution = (chunk: any, message: Message) => {
@@ -71,6 +104,13 @@ const handleToolExecution = (chunk: any, message: Message) => {
             // Handle partial results if needed
             break;
     }
+};
+
+// Clear chat history
+const clearChatHistory = () => {
+    messages.value = [];
+    conversationId.value = crypto.randomUUID(); // Generate new conversation ID
+    localStorage.removeItem(CHAT_HISTORY_KEY); // Clear saved chat history
 };
 
 // Map tool names to agent names
@@ -197,6 +237,7 @@ const onSubmit = async () => {
         agentOutputs: [],
     };
     messages.value.push(userMessage);
+    saveChatHistory(); // Save to localStorage
 
     // Scroll to bottom when user message is added
     nextTick(() => {
@@ -223,6 +264,7 @@ const onSubmit = async () => {
         agentOutputs: [],
     };
     messages.value.push(assistantMessage);
+    saveChatHistory(); // Save to localStorage
 
     // Scroll to bottom when new message is added
     nextTick(() => {
@@ -232,7 +274,9 @@ const onSubmit = async () => {
         }
     });
 
-    loading.value = true;
+    // Set submitted status when message is sent to API
+    submitted.value = true;
+
     try {
         // Use fetch directly for streaming
         const response = await fetch('/api/chat', {
@@ -242,6 +286,7 @@ const onSubmit = async () => {
             },
             body: JSON.stringify({
                 message: currentInput,
+                conversationId: conversationId.value,
             }),
         });
 
@@ -269,6 +314,13 @@ const onSubmit = async () => {
                     if (line.startsWith('data: ')) {
                         try {
                             const chunk = JSON.parse(line.slice(6));
+
+                            // Transition from submitted to streaming when first chunk arrives
+                            if (submitted.value) {
+                                submitted.value = false;
+                                loading.value = true;
+                            }
+
                             if (chunk.type === 'text-delta' && chunk.delta) {
                                 // Update the assistant message with new text
                                 const messageIndex = messages.value.findIndex(m => m.id === assistantMessageId);
@@ -316,6 +368,7 @@ const onSubmit = async () => {
         }
     } finally {
         loading.value = false;
+        submitted.value = false;
     }
 };
 </script>
@@ -328,22 +381,33 @@ const onSubmit = async () => {
                 container: 'lg:py-10', // Adjust height here
             }" />
         <div class="mx-4 md:mx-auto md:max-w-screen-md border border-gray-800 rounded-lg">
-            <UChatPalette class="p-0" :ui="{ content: 'overflow-y-auto flex-1 flex flex-col py-0' }">
+            <UChatPalette class="p-0" :ui="{ content: 'overflow-y-auto flex-1 flex flex-col py-0 max-h-[500px]' }">
                 <div class="py-2">
-                    <UChatMessages auto-scroll-icon="i-lucide-chevron-down" :should-scroll-to-bottom="true"
-                        :messages="messages" class="sm:py-0 px-10 max-h-[500px] overflow-y-auto" />
+                    <UChatMessages :messages="messages"
+                        :status="submitted ? 'submitted' : loading ? 'streaming' : 'ready'"
+                        auto-scroll-icon="i-lucide-arrow-down" :auto-scroll-icon-always="true"
+                        :should-scroll-to-bottom="true" :should-auto-scroll="true"
+                        class="sm:py-0 px-10 max-h-[500px] overflow-y-auto">
 
-                    <!-- Agent Outputs Display -->
-                    <template v-for="message in messages" :key="`${message.id}-outputs`">
-                        <div v-if="message.agentOutputs && message.agentOutputs.length > 0" class="px-10 pb-4">
-                            <div v-for="agentOutput in message.agentOutputs"
-                                :key="`${message.id}-${agentOutput.agentName}`" class="mt-4">
-                                <ToolExecution :tool-name="agentOutput.toolName || agentOutput.agentName"
-                                    :status="agentOutput.status" :input="agentOutput.input || {}"
-                                    :output="agentOutput.output" :summary="agentOutput.summary" />
+                        <!-- Custom content slot to add tool outputs after assistant messages -->
+                        <template #content="{ message }">
+                            <!-- Display the message text -->
+                            <div v-for="part in message.parts" :key="part.id" class="text-sm whitespace-pre-wrap">
+                                {{ part.text }}
                             </div>
-                        </div>
-                    </template>
+
+                            <!-- Tool Outputs immediately after assistant message -->
+                            <div v-if="message.role === 'assistant' && message.agentOutputs && message.agentOutputs.length > 0"
+                                class="mt-4 space-y-3">
+                                <div v-for="agentOutput in message.agentOutputs"
+                                    :key="`${message.id}-${agentOutput.agentName}`">
+                                    <ToolExecution :tool-name="agentOutput.toolName || agentOutput.agentName"
+                                        :status="agentOutput.status" :input="agentOutput.input || {}"
+                                        :output="agentOutput.output" :summary="agentOutput.summary" />
+                                </div>
+                            </div>
+                        </template>
+                    </UChatMessages>
                 </div>
 
                 <!-- <UCard variant="subtle" class="flex-1 flex items-center justify-center py-8 mx-8">
@@ -390,6 +454,14 @@ const onSubmit = async () => {
                     </UChatPrompt>
                 </template>
             </UChatPalette>
+        </div>
+
+        <!-- Clear chat button below chat box -->
+        <div v-if="messages.length > 0" class="flex justify-center mt-4">
+            <UButton @click="clearChatHistory" variant="outline" color="neutral" size="sm">
+                <UIcon name="i-lucide-trash-2" class="w-4 h-4 mr-2" />
+                Clear Chat History
+            </UButton>
         </div>
     </div>
 </template>
