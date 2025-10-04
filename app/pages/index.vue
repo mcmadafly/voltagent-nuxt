@@ -400,7 +400,7 @@ const onSubmit = async () => {
                         :status="submitted ? 'submitted' : loading ? 'streaming' : 'ready'"
                         auto-scroll-icon="i-lucide-arrow-down" :auto-scroll-icon-always="true"
                         :should-scroll-to-bottom="true" :should-auto-scroll="true"
-                        class="sm:py-0 px-10 max-h-[500px] overflow-y-auto">
+                        class="sm:py-0 px-10 h-full">
 
                         <!-- Custom content slot to add tool outputs after assistant messages -->
                         <template #content="{ message }">
